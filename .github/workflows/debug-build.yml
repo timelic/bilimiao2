@@ -1,0 +1,41 @@
+name: Manual Debug Build
+
+# 改为手动触发 (workflow_dispatch)
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: set up JDK 17
+      uses: actions/setup-java@v3
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    # 重点 1: 去掉原本的 Generate signing.properties 步骤
+    # 因为我们打 Debug 包不需要正式签名
+
+    - name: Build Debug APK
+      run: |
+        # 重点 2: 改用 assembleDebug
+        # 这样不需要签名配置，也不会因为缺少 Secrets 报错
+        ./gradlew app:assembleDebug
+
+    # 重点 3: 改用 upload-artifact
+    # 这样产物会出现在 Actions 运行结果页面供你下载，而不是发布到 Releases 页面
+    - name: Upload Debug APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: app-debug
+        # Debug 包通常在这个路径，如果有变动需根据项目调整
+        path: app/build/outputs/apk/debug/*.apk
+        # 或者 path: ${{ github.workspace }}/app/build/outputs/apk/*/debug/*.apk
